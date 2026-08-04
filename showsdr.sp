@@ -5,6 +5,7 @@
 #pragma newdecls required
 #pragma semicolon 1
 char sPublicIP[64];
+char sPublicSTVIP[64];
 int PublicSDRIP[4];
 bool SDR_IP_Set = false;
 
@@ -36,19 +37,34 @@ public void OnConfigsExecuted() {
 	PublicSDRIP[3] = decSDRIP & 0xFF;
 	int SDRPort = SteamPawn_GetSDRFakePort(0);
 	Format(sPublicIP, sizeof(sPublicIP), "%u.%u.%u.%u:%d", PublicSDRIP[0], PublicSDRIP[1], PublicSDRIP[2], PublicSDRIP[3], SDRPort);
-	
+
 	LogMessage("SDR IP: %s", sPublicIP);
+
+	SDRPort = SteamPawn_GetSDRFakePort(1);
+	if (SDRPort != 0) {
+		Format(sPublicSTVIP, sizeof(sPublicSTVIP), "%u.%u.%u.%u:%d", PublicSDRIP[0], PublicSDRIP[1], PublicSDRIP[2], PublicSDRIP[3], SDRPort);
+		LogMessage("SDR IP (STV): %s", sPublicSTVIP);
+	}
 }
 
 public Action Command_SDR(int client, int args) {
 	if (!SDR_IP_Set)
 	{
-		PrintToChat(client, "SDR does not seem to be on for this server.");
+		ReplyToCommand(client, "SDR does not seem to be on for this server.");
 		return Plugin_Handled;
 	}
-	PrintToChat(client, "SDR IP: %s", sPublicIP);
+	ReplyToCommand(client, "SDR IP: %s", sPublicIP);
 	char password[64];
 	FindConVar("sv_password").GetString(password, sizeof(password));
-	PrintToChat(client, "Connect Command: connect %s; password %s", sPublicIP, password);
+	ReplyToCommand(client, "Connect Command: connect %s; password %s", sPublicIP, password);
+
+	// being a player on the server does not automatically make you privy to STV -- server console only.
+	if (client == 0 && strlen(sPublicSTVIP) > 0)
+	{
+		ReplyToCommand(client, "SDR IP (STV): %s", sPublicSTVIP);
+		FindConVar("tv_password").GetString(password, sizeof(password));
+		ReplyToCommand(client, "Connect Command: connect %s; password %s", sPublicSTVIP, password);
+	}
+
 	return Plugin_Handled;
 }
